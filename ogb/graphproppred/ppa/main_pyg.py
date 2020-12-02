@@ -13,6 +13,13 @@ from ogb.graphproppred import PygGraphPropPredDataset, Evaluator
 
 multicls_criterion = torch.nn.CrossEntropyLoss()
 
+# tensorboard
+# from torch.utils.tensorboard import SummaryWriter
+import random
+import os
+import json
+
+
 
 import sys
 sys.path.insert(0,'../..')
@@ -48,6 +55,10 @@ parser.add_argument('--step-size', type=float, default=8e-3)
 parser.add_argument('-m', type=int, default=3)
 parser.add_argument('--test-freq', type=int, default=10)
 parser.add_argument('--attack', type=str, default='flag')
+
+parser.add_argument('--name', type=str, default='test')
+parser.add_argument('--seed', type=int, default=42)
+
 
 args = parser.parse_args()
 
@@ -120,8 +131,23 @@ def add_zeros(data):
     return data
 
 def main():
+    seed = args.seed
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
+    model_save_dir = f'models/{args.name}'
+    os.makedirs(model_save_dir, exist_ok=True)
 
     device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
+
+    print("Training")
+    # writer = SummaryWriter(model_save_dir)
+
+    with open(f'{model_save_dir}/arguments.txt', 'w') as f:
+        json.dump(args.__dict__, f, indent=2)
 
     ### automatic dataloading and splitting
 
@@ -171,6 +197,7 @@ def main():
                 result = (train_perf[dataset.eval_metric], valid_perf[dataset.eval_metric], test_perf[dataset.eval_metric])
                 _, val, tst = result
                 if val > best_val:
+                    torch.save(model.state_dict(), os.path.join(model_save_dir, f'model-best.pth'))
                     best_val = val
                     final_test = tst
 
