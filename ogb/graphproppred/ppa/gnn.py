@@ -11,7 +11,7 @@ from torch_scatter import scatter_mean
 class GNN(torch.nn.Module):
 
     def __init__(self, num_class, num_layer = 5, emb_dim = 300, 
-                    gnn_type = 'gin', virtual_node = True, residual = False, drop_ratio = 0.5, JK = "last", graph_pooling = "mean"):
+                    gnn_type = 'gin', virtual_node = True, residual = False, drop_ratio = 0.5, JK = "last", graph_pooling = "mean", topological=False):
         '''
             num_tasks (int): number of labels to be predicted
             virtual_node (bool): whether to add virtual node or not
@@ -25,6 +25,7 @@ class GNN(torch.nn.Module):
         self.emb_dim = emb_dim
         self.num_class = num_class
         self.graph_pooling = graph_pooling
+        self.topological = topological
 
         if self.num_layer < 2:
             raise ValueError("Number of GNN layers must be greater than 1.")
@@ -56,6 +57,11 @@ class GNN(torch.nn.Module):
             self.graph_pred_linear = torch.nn.Linear(self.emb_dim, self.num_class)
 
     def forward(self, batched_data, perturb=None):
+        if self.topological:
+            if not perturb:
+                perturb = torch.zeros(batched_data.x.shape[0], self.emb_dim)
+                
+
         h_node = self.gnn_node(batched_data, perturb)
 
         h_graph = self.pool(h_node, batched_data.batch)
