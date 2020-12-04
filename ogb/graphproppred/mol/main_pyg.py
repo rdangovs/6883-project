@@ -97,7 +97,7 @@ def train(model, device, loader, optimizer, task_type, args):
             loss, _ = flag(model_forward, perturb_shape, y, args, optimizer, device, cls_criterion)
             total_loss += loss.item()
 
-            print(loss.item())
+            # print(loss.item())
 
     return total_loss / len(loader)
 
