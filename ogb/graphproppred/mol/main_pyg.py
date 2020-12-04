@@ -20,7 +20,6 @@ import sys
 sys.path.insert(0,'../..')
 from attacks import *
 
-
 parser = argparse.ArgumentParser(description='GNN baselines on ogbgmol* data with Pytorch Geometrics')
 parser.add_argument('--gnn', type=str, default='gcn',
                     help='GNN gin, gin-virtual, or gcn, or gcn-virtual (default: gin-virtual)')
@@ -51,7 +50,11 @@ parser.add_argument('-m', type=int, default=3)
 parser.add_argument('--test-freq', type=int, default=1)
 parser.add_argument('--attack', type=str, default='flag')
 
+parser.add_argument('--transformers', action='store_true')
+
 args = parser.parse_args()
+
+
 
 def train_vanilla(model, device, loader, optimizer, task_type):
     model.train()
@@ -91,6 +94,8 @@ def train(model, device, loader, optimizer, task_type, args):
 
             loss, _ = flag(model_forward, perturb_shape, y, args, optimizer, device, cls_criterion)
             total_loss += loss.item()
+
+            print(loss.item())
 
     return total_loss/len(loader)
 
@@ -153,16 +158,16 @@ def main():
 
         if args.gnn == 'gin':
             model = GNN(gnn_type='gin', num_tasks=dataset.num_tasks, num_layer=args.num_layer, emb_dim=args.emb_dim,
-                        drop_ratio=args.drop_ratio, virtual_node=False).to(device)
+                        drop_ratio=args.drop_ratio, virtual_node=False, transformers=args.transformers).to(device)
         elif args.gnn == 'gin-virtual':
             model = GNN(gnn_type='gin', num_tasks=dataset.num_tasks, num_layer=args.num_layer, emb_dim=args.emb_dim,
-                        drop_ratio=args.drop_ratio, virtual_node=True).to(device)
+                        drop_ratio=args.drop_ratio, virtual_node=True, transformers=args.transformers).to(device)
         elif args.gnn == 'gcn':
             model = GNN(gnn_type='gcn', num_tasks=dataset.num_tasks, num_layer=args.num_layer, emb_dim=args.emb_dim,
-                        drop_ratio=args.drop_ratio, virtual_node=False).to(device)
+                        drop_ratio=args.drop_ratio, virtual_node=False, transformers=args.transformers).to(device)
         elif args.gnn == 'gcn-virtual':
             model = GNN(gnn_type='gcn', num_tasks=dataset.num_tasks, num_layer=args.num_layer, emb_dim=args.emb_dim,
-                        drop_ratio=args.drop_ratio, virtual_node=True).to(device)
+                        drop_ratio=args.drop_ratio, virtual_node=True, transformers=args.transformers).to(device)
         else:
             raise ValueError('Invalid GNN type')
 
