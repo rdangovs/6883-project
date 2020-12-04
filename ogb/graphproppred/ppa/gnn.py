@@ -60,7 +60,7 @@ class GNN(torch.nn.Module):
         if self.topological:
             if not perturb:
                 perturb = torch.zeros(batched_data.x.shape[0], self.emb_dim)
-                
+
 
         h_node = self.gnn_node(batched_data, perturb)
 

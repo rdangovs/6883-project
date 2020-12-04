@@ -30,9 +30,9 @@ parser.add_argument('--num_layer', type=int, default=5,
                     help='number of GNN message passing layers (default: 5)')
 parser.add_argument('--emb_dim', type=int, default=300,
                     help='dimensionality of hidden units in GNNs (default: 300)')
-parser.add_argument('--batch_size', type=int, default=32,
+parser.add_argument('--batch_size', type=int, default=128,
                     help='input batch size for training (default: 32)')
-parser.add_argument('--epochs', type=int, default=100,
+parser.add_argument('--epochs', type=int, default=10,
                     help='number of epochs to train (default: 100)')
 parser.add_argument('--num_workers', type=int, default=0,
                     help='number of workers (default: 0)')
@@ -56,7 +56,6 @@ parser.add_argument('--controller', action='store_true')
 
 args = parser.parse_args()
 
-
 def train_vanilla(model, device, loader, optimizer, task_type):
     model.train()
 
@@ -79,6 +78,7 @@ def train_vanilla(model, device, loader, optimizer, task_type):
 
 
 def train(model, device, loader, optimizer, task_type, args):
+    start = time.time()
     total_loss = 0
     for step, batch in enumerate(loader):
         batch = batch.to(device)
@@ -98,6 +98,8 @@ def train(model, device, loader, optimizer, task_type, args):
             total_loss += loss.item()
 
             # print(loss.item())
+            if step % 200 == 0:
+                print(time.time() - start, total_loss / len(loader))
 
     return total_loss / len(loader)
 
@@ -129,7 +131,7 @@ def eval(model, device, loader, evaluator):
 
 def main():
     device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
-
+    print(f"device is {device}")
     ### automatic dataloading and splitting
     dataset = PygGraphPropPredDataset(name=args.dataset)
 
@@ -180,6 +182,7 @@ def main():
 
         for epoch in range(1, args.epochs + 1):
             loss = train(model, device, train_loader, optimizer, dataset.task_type, args)
+            print(f"epoch {epoch}, loss {loss}")
             if epoch > args.epochs // 2 and epoch % args.test_freq == 0 or epoch == args.epochs:
                 train_perf = eval(model, device, train_loader, evaluator)
                 valid_perf = eval(model, device, valid_loader, evaluator)

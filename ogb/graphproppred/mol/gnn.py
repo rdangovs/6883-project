@@ -36,17 +36,17 @@ class GNN(torch.nn.Module):
                                                                                             dim_feedforward=emb_dim * 4,
                                                                                             nhead=4) for _ in range(2)])
         if controller:
-            self.controller_layers = torch.nn.ModuleList([ControllerTransformer(depth=2,
+            self.controller_layers = torch.nn.ModuleList([ControllerTransformer(depth=1,
                                                                                 expansion_ratio=4,
                                                                                 n_heads=4,
                                                                                 s2g_sharing=True,
                                                                                 in_features=300,
                                                                                 out_features=1,
-                                                                                set_fn_feats=[256, 256, 256, 256, 5],
+                                                                                set_fn_feats=[128, 128, 128, 128, 5],
                                                                                 method='lin2',
-                                                                                hidden_mlp=[256],
+                                                                                hidden_mlp=[128],
                                                                                 predict_diagonal=False,
-                                                                                attention=True) for _ in range(2)])
+                                                                                attention=True) for _ in range(1)])
         self.transformers = transformers
         self.controller = controller
 
