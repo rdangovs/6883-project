@@ -17,7 +17,8 @@ cls_criterion = torch.nn.BCEWithLogitsLoss()
 reg_criterion = torch.nn.MSELoss()
 
 import sys
-sys.path.insert(0,'../..')
+
+sys.path.insert(0, '../..')
 from attacks import *
 
 parser = argparse.ArgumentParser(description='GNN baselines on ogbgmol* data with Pytorch Geometrics')
@@ -51,9 +52,9 @@ parser.add_argument('--test-freq', type=int, default=1)
 parser.add_argument('--attack', type=str, default='flag')
 
 parser.add_argument('--transformers', action='store_true')
+parser.add_argument('--controller', action='store_true')
 
 args = parser.parse_args()
-
 
 
 def train_vanilla(model, device, loader, optimizer, task_type):
@@ -69,12 +70,13 @@ def train_vanilla(model, device, loader, optimizer, task_type):
             optimizer.zero_grad()
             ## ignore nan targets (unlabeled) when computing training loss.
             is_labeled = batch.y == batch.y
-            if "classification" in task_type: 
+            if "classification" in task_type:
                 loss = cls_criterion(pred.to(torch.float32)[is_labeled], batch.y.to(torch.float32)[is_labeled])
             else:
                 loss = reg_criterion(pred.to(torch.float32)[is_labeled], batch.y.to(torch.float32)[is_labeled])
             loss.backward()
             optimizer.step()
+
 
 def train(model, device, loader, optimizer, task_type, args):
     total_loss = 0
@@ -87,7 +89,7 @@ def train(model, device, loader, optimizer, task_type, args):
             ## ignore nan targets (unlabeled) when computing training loss.
             is_labeled = batch.y == batch.y
 
-            forward = lambda perturb : model(batch, perturb).to(torch.float32)[is_labeled]
+            forward = lambda perturb: model(batch, perturb).to(torch.float32)[is_labeled]
             model_forward = (model, forward)
             y = batch.y.to(torch.float32)[is_labeled]
             perturb_shape = (batch.x.shape[0], 300)
@@ -97,9 +99,7 @@ def train(model, device, loader, optimizer, task_type, args):
 
             print(loss.item())
 
-    return total_loss/len(loader)
-
-
+    return total_loss / len(loader)
 
 
 def eval(model, device, loader, evaluator):
@@ -119,8 +119,8 @@ def eval(model, device, loader, evaluator):
             y_true.append(batch.y.view(pred.shape).detach().cpu())
             y_pred.append(pred.detach().cpu())
 
-    y_true = torch.cat(y_true, dim = 0).numpy()
-    y_pred = torch.cat(y_pred, dim = 0).numpy()
+    y_true = torch.cat(y_true, dim=0).numpy()
+    y_pred = torch.cat(y_pred, dim=0).numpy()
 
     input_dict = {"y_true": y_true, "y_pred": y_pred}
 
@@ -128,29 +128,30 @@ def eval(model, device, loader, evaluator):
 
 
 def main():
-
     device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
 
     ### automatic dataloading and splitting
-    dataset = PygGraphPropPredDataset(name = args.dataset)
+    dataset = PygGraphPropPredDataset(name=args.dataset)
 
     if args.feature == 'full':
-        pass 
+        pass
     elif args.feature == 'simple':
         print('using simple feature')
         # only retain the top two node/edge features
-        dataset.data.x = dataset.data.x[:,:2]
-        dataset.data.edge_attr = dataset.data.edge_attr[:,:2]
+        dataset.data.x = dataset.data.x[:, :2]
+        dataset.data.edge_attr = dataset.data.edge_attr[:, :2]
 
     split_idx = dataset.get_idx_split()
 
     ### automatic evaluator. takes dataset name as input
     evaluator = Evaluator(args.dataset)
 
-    train_loader = DataLoader(dataset[split_idx["train"]], batch_size=args.batch_size, shuffle=True, num_workers = args.num_workers)
-    valid_loader = DataLoader(dataset[split_idx["valid"]], batch_size=args.batch_size, shuffle=False, num_workers = args.num_workers)
-    test_loader = DataLoader(dataset[split_idx["test"]], batch_size=args.batch_size, shuffle=False, num_workers = args.num_workers)
-
+    train_loader = DataLoader(dataset[split_idx["train"]], batch_size=args.batch_size, shuffle=True,
+                              num_workers=args.num_workers)
+    valid_loader = DataLoader(dataset[split_idx["valid"]], batch_size=args.batch_size, shuffle=False,
+                              num_workers=args.num_workers)
+    test_loader = DataLoader(dataset[split_idx["test"]], batch_size=args.batch_size, shuffle=False,
+                             num_workers=args.num_workers)
 
     vals, tests = [], []
     for run in range(args.runs):
@@ -158,30 +159,34 @@ def main():
 
         if args.gnn == 'gin':
             model = GNN(gnn_type='gin', num_tasks=dataset.num_tasks, num_layer=args.num_layer, emb_dim=args.emb_dim,
-                        drop_ratio=args.drop_ratio, virtual_node=False, transformers=args.transformers).to(device)
+                        drop_ratio=args.drop_ratio, virtual_node=False, transformers=args.transformers,
+                        controller=args.controller).to(device)
         elif args.gnn == 'gin-virtual':
             model = GNN(gnn_type='gin', num_tasks=dataset.num_tasks, num_layer=args.num_layer, emb_dim=args.emb_dim,
-                        drop_ratio=args.drop_ratio, virtual_node=True, transformers=args.transformers).to(device)
+                        drop_ratio=args.drop_ratio, virtual_node=True, transformers=args.transformers,
+                        controller=args.controller).to(device)
         elif args.gnn == 'gcn':
             model = GNN(gnn_type='gcn', num_tasks=dataset.num_tasks, num_layer=args.num_layer, emb_dim=args.emb_dim,
-                        drop_ratio=args.drop_ratio, virtual_node=False, transformers=args.transformers).to(device)
+                        drop_ratio=args.drop_ratio, virtual_node=False, transformers=args.transformers,
+                        controller=args.controller).to(device)
         elif args.gnn == 'gcn-virtual':
             model = GNN(gnn_type='gcn', num_tasks=dataset.num_tasks, num_layer=args.num_layer, emb_dim=args.emb_dim,
-                        drop_ratio=args.drop_ratio, virtual_node=True, transformers=args.transformers).to(device)
+                        drop_ratio=args.drop_ratio, virtual_node=True, transformers=args.transformers,
+                        controller=args.controller).to(device)
         else:
             raise ValueError('Invalid GNN type')
 
         optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
-
-        for epoch in range(1, args.epochs+1):
+        for epoch in range(1, args.epochs + 1):
             loss = train(model, device, train_loader, optimizer, dataset.task_type, args)
-            if epoch > args.epochs//2 and epoch % args.test_freq == 0 or epoch == args.epochs:
+            if epoch > args.epochs // 2 and epoch % args.test_freq == 0 or epoch == args.epochs:
                 train_perf = eval(model, device, train_loader, evaluator)
                 valid_perf = eval(model, device, valid_loader, evaluator)
                 test_perf = eval(model, device, test_loader, evaluator)
 
-                result = (train_perf[dataset.eval_metric], valid_perf[dataset.eval_metric], test_perf[dataset.eval_metric])
+                result = (
+                    train_perf[dataset.eval_metric], valid_perf[dataset.eval_metric], test_perf[dataset.eval_metric])
                 _, val, tst = result
                 if val > best_val:
                     best_val = val
@@ -194,6 +199,7 @@ def main():
     print('')
     print(f"Average val accuracy: {np.mean(vals)} ± {np.std(vals)}")
     print(f"Average test accuracy: {np.mean(tests)} ± {np.std(tests)}")
+
 
 if __name__ == "__main__":
     main()
